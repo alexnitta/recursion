@@ -7,7 +7,7 @@
 var getElementsByClassName = function(className) {
   // your code here
   
-  var elementList = document.querySelectorAll('.' + classname);
+  var elementList = document.querySelectorAll('.' + className);
   
   return elementList;
   
