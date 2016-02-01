@@ -3,79 +3,103 @@
 
 // but you don't so you're going to write it from scratch:
 
-var stringifyJSON = function(obj) {
+var stringifyJSON = function (value) {
   
-  var stringifyObj = function (arg) { // use this inner function on objects only
-    var result = '';
-    var keys = Object.keys(arg); // set var keys to array containing the keys of the supplied object
-    var position = keys.length-1;  // position is the index of the current key in keys var
-    
-    (function looper(obj2) { // IIFE that uses recursion
-      if (position < 0 ) {
-        result = '{' + result + '}'; // base case - if all properties have been logged (or there are no properties), 
-        return result; // wrap result in curly braces and return result
-      } else { // recursive case
-        result = '"' + keys[position] + '":' + obj2[keys[position]] + result; // wrap key and value in appropriate
-        // punctuation and prepend to result 
-        if (position > 0) { // if the key:value pair is in any position other than first, prepend a comma to result
-          result = ',' + result;
-        }
-        position --; // decrement the position
-      } 
-      looper(obj2); // call IIFE on itself
-    })(arg); // feed arg to IIFE
-    
-    return result;
+  var primitiveChecker = function(item) { // returns a string if item is a primitive or false if the item is an array or object
+    if (typeof(item) === 'undefined') {
+      return 'undefined';
+    } else if (typeof(item) === 'function') {
+      return 'function';
+    } else if (item === null) {
+      return 'null';
+    } else if (item === true) {
+      return 'true';
+    } else if (item === false) {
+      return 'false';
+    } else if(typeof(item) === 'number') {
+      return item.toString();
+    } else if (typeof(item) === 'string') {
+      return '"' + item + '"';
+    } else {
+      return false;
+    }
   };
   
-  var stringifyArr = function(arg) { // use this inner function on arrays only
-    var result = '';
-    var arrCopy = arg.slice();
-    
-    (function looper2(input) { // IIFE that uses recursion
-
-      if (input.length === 0) { // base case: once input is empty, 
-        result = '[' + result + ']'; // wrap result in brackets and return it
-        return result;
-      } else { // recursive case
-        var item = input.pop();
-        if (typeof(item) === 'string') {
-          item = '"' + item + '"';
-        }
-        result = item + result; // prepend current item to result
-        if (input.length > 0) {
-          result = ',' + result; // if the item is in any position other than first, prepend a comma to result
-        }
-      }
-          
-      looper2(input); // call the IIFE on itself
-    
-    })(arrCopy); // feed arg to IIFE
-    
-    return result;
-      
-  };
-  
-  if (typeof(obj) === 'undefined') {
-    console.log('Error! Input must not be undefined.');
-    return;
-  } else if (typeof(obj) === 'function') {
-    console.log('Error! Input must not be a function.');
-    return;
-  } else if (obj === null) {
-    return 'null';
-  } else if (obj === true) {
-    return 'true';
-  } else if (obj === false) {
-    return 'false';
-  } else if(typeof(obj) === 'number') {
-    return obj.toString();
-  } else if (typeof(obj) === 'string') {
-    return '"' + obj  + '"';
-  } else if (Array.isArray(obj)) {
-    return stringifyArr(obj);
-  } else if (typeof(obj) === 'object') {
-  return stringifyObj(obj);
+  if (primitiveChecker(value)) { // if the value is a primitive,
+    return primitiveChecker(value); // return appropriate string
   }
   
+  if (!primitiveChecker(value)) { // termination cases:
+    if (Array.isArray(value) && value.length === 0) { // if obj is an empty array,
+      return '[]'; // return brackets
+    } else if (Object.keys(value).length === 0) { // if obj is an empty object,
+      return '{}'; // return braces
+    }
+  }
+
+// if this point has been reached, value is a collection
+
+  var innerFunc = function (obj, objKeys) { // inner function to be run if value is a collection
+    var result = '';
+    
+    if (Array.isArray(obj)) { // if collection is an array,
+      var objArr = obj.slice(); // copy the obj      
+      if (obj === value) { // if collection is the original value 
+        result ='['; // add the open brace
+      } else { // if collection is not original value,
+        if (objArr.length === 0) { 
+          return ']'; 
+        } 
+        // if (objArr.length > 1) { 
+          result = ','; 
+        // }
+        // if (objArr.length === 1) {
+        //   result += '[';
+        // }
+      }
+      
+      var arrayValue = objArr.shift(); // remove the first element of the array  
+      
+      if (primitiveChecker(arrayValue)) { // if the first element is a primitive,
+          result += primitiveChecker(arrayValue); // append the appropriate string
+      } else { // otherwise,
+        console.log('arrayValue: ' + JSON.stringify(arrayValue) + ' -- ran innerFunc(arrayValue)');
+        if (Array.isArray(arrayValue) && arrayValue.length === 0) {
+          result += '[]';
+        } else if (Object.keys(arrayValue).length === 0) {
+          result += '{}';
+        }
+        result += innerFunc(arrayValue); // recursive case: if first element is a non-empty collection, recurse
+      }   
+      
+      return result + innerFunc(objArr);
+      
+    } else { // if collection is not an array, it is an object
+      if (objKeys === undefined) { // keys haven't been loaded, either first pass, or processing a value of type object
+        objKeys = Object.keys(obj);
+        result = '{';
+      } else {  
+        if (objKeys.length === 0) { // if keys array exists and is empty, no more properties to evaluate,
+            return '}'; // so return the end bracket
+        } else { // if keys array exists and isn't empty, that means it's a property and not the first property
+          result = ','; // so add a comma    
+        }
+      }
+      
+      result += '"' + objKeys[0] + '":'; // add the property name
+      var objValue = obj[objKeys[0]]; // get the value
+
+      if (primitiveChecker(objValue)) { // if the current value is a primitive,
+          result += primitiveChecker(objValue); // append the appropriate string
+      } else { // otherwise,
+        result += innerFunc(objValue); // recursive case: if current value is a non-empty collection, recurse
+      }  
+
+      objKeys.splice(0,1);
+      //call the function for the next property
+      return result + innerFunc(obj, objKeys);
+    };
+  }
+  
+return innerFunc(value);
 };
