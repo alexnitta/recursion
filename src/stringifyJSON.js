@@ -39,67 +39,66 @@ var stringifyJSON = function (value) {
 
 // if this point has been reached, value is a collection
 
-  var innerFunc = function (obj, objKeys) { // inner function to be run if value is a collection
+  var innerFunc = function (obj, size) { // inner function to be run if value is a collection with contents
     var result = '';
     
     if (Array.isArray(obj)) { // if collection is an array,
-      var objArr = obj.slice(); // copy the obj      
-      if (obj === value) { // if collection is the original value 
-        result ='['; // add the open brace
-      } else { // if collection is not original value,
-        if (objArr.length === 0) { 
-          return ']'; 
-        } 
-        // if (objArr.length > 1) { 
-          result = ','; 
-        // }
-        // if (objArr.length === 1) {
-        //   result += '[';
-        // }
-      }
+      // begin array version
+      if (size === undefined) {
+        result = ']'; // start with closing bracket
+        size = obj.length; // if size is undefined, set it to length of obj
+      }      
       
-      var arrayValue = objArr.shift(); // remove the first element of the array  
-      
-      if (primitiveChecker(arrayValue)) { // if the first element is a primitive,
-          result += primitiveChecker(arrayValue); // append the appropriate string
-      } else { // otherwise,
-        console.log('arrayValue: ' + JSON.stringify(arrayValue) + ' -- ran innerFunc(arrayValue)');
-        if (Array.isArray(arrayValue) && arrayValue.length === 0) {
-          result += '[]';
-        } else if (Object.keys(arrayValue).length === 0) {
-          result += '{}';
+      if (size > 0) { // recursive case: if object is not empty,                
+        var key = size-1;
+        if (primitiveChecker(obj[key])) { // if the element is a primitive,
+          result = primitiveChecker(obj[key]) + result; // prepend the key and appropriate string, with punctuation          
+          if (size > 1) {
+            result = ',' + result; // if this is not the first element, prepend a comma
+          }
+          result = innerFunc(obj, size - 1) + result;
+        } else { // if the element is a collection,         
+          if (size > 1) {
+            result = ',' + result; // if this is not the first element, prepend a comma
+          }
+          result = '[' + innerFunc(obj[key]) + result; // recurse
         }
-        result += innerFunc(arrayValue); // recursive case: if first element is a non-empty collection, recurse
-      }   
-      
-      return result + innerFunc(objArr);
+      // end of recursive case  
+      } else { // base case: if there are no more elements,
+        result = '[' + result; // append open bracket     
+      }               
+      return result;  
+      // end of array version
       
     } else { // if collection is not an array, it is an object
-      if (objKeys === undefined) { // keys haven't been loaded, either first pass, or processing a value of type object
-        objKeys = Object.keys(obj);
-        result = '{';
-      } else {  
-        if (objKeys.length === 0) { // if keys array exists and is empty, no more properties to evaluate,
-            return '}'; // so return the end bracket
-        } else { // if keys array exists and isn't empty, that means it's a property and not the first property
-          result = ','; // so add a comma    
-        }
-      }
+      // begin object version
+      if (size === undefined) {
+        result = '}'; // start with closing brace
+        size = Object.keys(obj).length; // if size is undefined, set it to length of obj
+      }      
       
-      result += '"' + objKeys[0] + '":'; // add the property name
-      var objValue = obj[objKeys[0]]; // get the value
-
-      if (primitiveChecker(objValue)) { // if the current value is a primitive,
-          result += primitiveChecker(objValue); // append the appropriate string
-      } else { // otherwise,
-        result += innerFunc(objValue); // recursive case: if current value is a non-empty collection, recurse
-      }  
-
-      objKeys.splice(0,1);
-      //call the function for the next property
-      return result + innerFunc(obj, objKeys);
-    };
-  }
+      if (size > 0) { // recursive case: if object is not empty,                
+        var key = Object.keys(obj)[size-1];
+        if (primitiveChecker(obj[key])) { // if the element is a primitive,
+          result = '"' + key + '":' + primitiveChecker(obj[key]) + result; // prepend the key and appropriate string, with punctuation          
+          if (size > 1) {
+            result = ',' + result; // if this is not the first element, prepend a comma
+          }
+          result = innerFunc(obj, size - 1) + result;
+        } else { // if the element is a collection,         
+          if (size > 1) {
+            result = ',' + result; // if this is not the first element, prepend a comma
+          }
+          result = '{"' + key + '":' + innerFunc(obj[key]) + result; // recurse
+        }
+      // end of recursive case  
+      } else { // base case: if there are no more elements,
+        result = '{' + result; // append open brace      
+      }               
+      return result;  
+      // end of object version
+    }
+  }; // end of innerFunc
   
 return innerFunc(value);
-};
+}; // end of stringifyJSON function
